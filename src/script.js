@@ -9,6 +9,31 @@ import waterVertexShader from './shaders/fire/vertex.glsl'
 import waterFragmentShader from './shaders/fire/fragment.glsl'
 
 
+import perlinNoise3d from 'perlin-noise-3d'
+
+
+import {
+    writeLine
+} from './js/writeLine'
+import {
+    createHexInstance
+} from './js/createHexInstance'
+import {
+    constants
+} from './js/constants'
+import {
+    shaders
+} from './js/shaders'
+
+
+let state = {
+    assemble: false,
+    hexRadius: 0.8,
+    gap: 1.5,
+}
+
+let counter = 0
+const hexHeight = 1
 
 /**
  * Base
@@ -24,17 +49,19 @@ const canvas = document.querySelector('canvas.webgl')
 
 // Scene
 const scene = new THREE.Scene()
-const subs = 512;
 
 /**
  * Lights
  */
 
+let ax = new THREE.AxesHelper(50)
+scene.add(ax)
+
 let light = new THREE.DirectionalLight(0xffffff, 1.5);
 light.position.set(0, 50, 20);
 light.castShadow = true;
-light.shadow.mapSize.width = 2048;
-light.shadow.mapSize.height = 2048;
+light.shadow.mapSize.width = 1024;
+light.shadow.mapSize.height = 1024;
 light.shadow.camera.near = 0.5;
 light.shadow.camera.far = 250;
 
@@ -44,94 +71,103 @@ light.shadow.camera.bottom = -camSize;
 light.shadow.camera.right = camSize;
 light.shadow.camera.top = camSize;
 
-scene.add(light);
-scene.add(new THREE.AmbientLight(0xffffff, 0.5));
+scene.add(light)
+scene.add(new THREE.AmbientLight(0xffffff, 0.5))
 
 // Geometry
 
-
-let circleCount = 5;
-let instCount = ((circleCount * (circleCount + 1)) / 2) * 6 + 1;
-let g = new THREE.CylinderBufferGeometry(0.5, 0.5, 0.1, 6);
+let g = new THREE.CylinderBufferGeometry(state.hexRadius, state.hexRadius, hexHeight, 6);
 g.rotateX(Math.PI * 0.5);
+
+
+let hexUniforms = {
+    time: {
+        value: 0
+    },
+    assTime: {
+        value: 0
+    }
+};
+
 let m = new THREE.MeshStandardMaterial({
-    // color: 0x222244,
     roughness: 0.75,
     metalness: 0.25,
 });
 
-
-let o = new THREE.InstancedMesh(g, m, instCount);
-// let o = new THREE.Mesh(g, m);
-
-// o.castShadow = true;
-// o.receiveShadow = true;
-
-let dummy = new THREE.Object3D();
-
-
-scene.add(o)
+let mat = shaders(m, hexUniforms)
 
 //Color
 debugObject.debthColor = '#186691'
 debugObject.surfaceColor = '#9bd8ff'
 
-const centerHexColor = new THREE.Color(0xffffff)
 
-const colorsArray = [
-    new THREE.Color(0x186691),
-    new THREE.Color(0x9bd8ff),
-    new THREE.Color(0xffb700),
-    new THREE.Color(0x555555),
-]
+let unifroms = {
+    idx: [],
+    colors: [],
+    pos: [],
+    delay: []
+}
 
+let sentence = "Aa Bb Cc"
 
-let unit = Math.sqrt(3) * 0.5 * 1.09
-let angle = Math.PI / 3
-let axis = new THREE.Vector3(0, 0, 1)
+let hexInstancesArray = []
+let fullWidth = constants.x * state.hexRadius * sentence.length
 
-let axisVector = new THREE.Vector3(0, -unit, 0)
-let sideVector = new THREE.Vector3(0, unit, 0).applyAxisAngle(axis, -angle)
-let vec3 = new THREE.Vector3(); // temp vector
-let counter = 0
+for (let i = 0; i < sentence.length; i++) {
+    let letter = sentence[i]
+    let _im = createHexInstance(g, m);
+    _im.userData = {}
+    _im.userData.delay = []
+    
+    hexInstancesArray.push(_im)
+    let dummy = new THREE.Object3D();
+    scene.add(hexInstancesArray[i])
+    let _c = constants.y
+    if (['i', 'I', 'l'].includes(letter)) {
+        _c -= 4
+    } else if ([
+            "a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l",
+            "n", "o", "p", "q", "r", "s", "t", "u", "v",  "x", "y", "z"
+        ].includes(letter)) {
+        _c -= 2
+    } else if ([
+        " "
+    ].includes(letter)) {
+        _c = 2
+}
 
-for (let seg = 0; seg < 6; seg++) {
-    for (let ax = 1; ax <= circleCount; ax++) {
-        for (let sd = 0; sd < ax; sd++) {
-
-            vec3.copy(axisVector)
-                .multiplyScalar(ax)
-                .addScaledVector(sideVector, sd)
-                .applyAxisAngle(axis, (angle * seg) + (Math.PI / 6));
-
-            setHexData(o, dummy, vec3, counter);
-            let index = THREE.MathUtils.randInt(0, colorsArray.length - 1);
-            o.setColorAt(counter, colorsArray[index])
-            o.instanceColor.needsUpdate
-
-            counter++;
-        }
+    let bounds = {
+        pYLen: _c,
+        index: i,
+        gap: state.gap,
+        fw: fullWidth
     }
-}
 
-setHexData(o, dummy, new THREE.Vector3(), counter);
-o.setColorAt(counter, centerHexColor)
-
-
-
-function setHexData(o, dummy, pos, idx) {
-
-    // debugger
-    dummy.position.copy(pos);
-    dummy.updateMatrix();
-    o.setMatrixAt(idx, dummy.matrix);
-
+    writeLine(_im, sentence[i], dummy, unifroms, counter, state, bounds)
 }
 
 
 
-//debug
-// gui.add(waterMaterial.uniforms.uBigWavesElevation, 'value').min(0).max(1).step(0.001).name('uBigWavesElevation')
+g.setAttribute(
+    "aColor",
+    new THREE.InstancedBufferAttribute(new Float32Array(unifroms.colors), 3)
+);
+
+g.setAttribute(
+    "aIndex",
+    new THREE.InstancedBufferAttribute(new Float32Array(unifroms.idx), 1)
+);
+
+g.setAttribute(
+    "aDelay",
+    new THREE.InstancedBufferAttribute(new Float32Array(unifroms.delay), 1)
+);
+
+g.setAttribute(
+    "aPosXY",
+    new THREE.InstancedBufferAttribute(new Float32Array(unifroms.pos), 2)
+);
+
 
 /**
  * Sizes
@@ -160,7 +196,7 @@ window.addEventListener('resize', () => {
  */
 // Base camera
 const camera = new THREE.PerspectiveCamera(75, sizes.width / sizes.height, 0.1, 100)
-camera.position.set(0, 0, 7)
+camera.position.set(0, 0, 30)
 scene.add(camera)
 
 // Controls
@@ -175,6 +211,8 @@ const renderer = new THREE.WebGLRenderer({
 })
 renderer.setSize(sizes.width, sizes.height)
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 
 /**
  * Animate
@@ -182,32 +220,43 @@ renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
 const clock = new THREE.Clock()
 let mat4 = new THREE.Matrix4();
 
+
 const tick = () => {
-    const elapsedTime = clock.getElapsedTime()
+    const t = clock.getElapsedTime()
+    hexUniforms.time.value = t;
 
     // Update controls
     controls.update()
-
-    for (let i = 0; i < o.count; i++) {
-        o.getMatrixAt(i, mat4);
-        mat4.decompose(dummy.position, dummy.quaternion, dummy.scale);
-        // dummy.position.z = Math.sin(elapsedTime * 0.5) * 0.125;
-        dummy.rotation.set(
-            Math.cos(i + elapsedTime) * Math.PI * 0.0625,
-            Math.sin(i - elapsedTime) * Math.PI * 0.0625,
-            0
-          );
-        dummy.updateMatrix();
-        o.setMatrixAt(i, dummy.matrix);
+    if (state.assemble) {
+        hexUniforms.assTime.value += 0.01
+        if(hexUniforms.assTime.value > 1){
+            hexUniforms.assTime.value = 1
+        }
     }
-    o.instanceMatrix.needsUpdate = true;
+
+    hexInstancesArray.forEach(i => {
+        i.instanceMatrix.needsUpdate = true
+    })
+
 
     // Render
     renderer.render(scene, camera)
 
-
-    // Call tick again on the next frame
     window.requestAnimationFrame(tick)
 }
 
 tick()
+
+
+
+let font_canvas = document.querySelector('.font_canvas')
+let fcDims = {
+    w: 14,
+    h: 20,
+}
+font_canvas.width = fcDims.w
+font_canvas.height = fcDims.h
+var ctx = font_canvas.getContext("2d");
+var fsz = fcDims.w * 1.3
+
+
