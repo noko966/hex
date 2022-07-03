@@ -286,3 +286,18 @@ function setHexData(o, dummy, pos, idx) {
 
 
 // (?<=[0,1],)\n
+
+
+
+    // if (['i', 'I', 'l'].includes(letter)) {
+    //     _c -= 4
+    // } else if ([
+    //         "a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l",
+    //         "n", "o", "p", "q", "r", "s", "t", "u", "v", "x", "y", "z"
+    //     ].includes(letter)) {
+    //     _c -= 2
+    // } else if ([
+    //         " "
+    //     ].includes(letter)) {
+    //     _c = 2
+    // }

@@ -11,10 +11,12 @@ import waterFragmentShader from './shaders/fire/fragment.glsl'
 
 import perlinNoise3d from 'perlin-noise-3d'
 
+import STATE from './js/State'
+
 
 import {
-    writeLine
-} from './js/writeLine'
+    writeLetter
+} from './js/writeLetter'
 import {
     createHexInstance
 } from './js/createHexInstance'
@@ -25,15 +27,18 @@ import {
     shaders
 } from './js/shaders'
 
+import {
+    letters
+} from './js/lettersPixel'
+
 
 let state = {
     assemble: false,
-    hexRadius: 0.8,
+    hexRadius: 1.3,
     gap: 1.5,
 }
 
-let counter = 0
-const hexHeight = 1
+const hexHeight = 2
 
 /**
  * Base
@@ -55,7 +60,7 @@ const scene = new THREE.Scene()
  */
 
 let ax = new THREE.AxesHelper(50)
-scene.add(ax)
+// scene.add(ax)
 
 let light = new THREE.DirectionalLight(0xffffff, 1.5);
 light.position.set(0, 50, 20);
@@ -76,97 +81,53 @@ scene.add(new THREE.AmbientLight(0xffffff, 0.5))
 
 // Geometry
 
-let g = new THREE.CylinderBufferGeometry(state.hexRadius, state.hexRadius, hexHeight, 6);
-g.rotateX(Math.PI * 0.5);
 
 
-let hexUniforms = {
-    time: {
-        value: 0
-    },
-    assTime: {
-        value: 0
-    }
-};
 
-let m = new THREE.MeshStandardMaterial({
-    roughness: 0.75,
-    metalness: 0.25,
-});
-
-let mat = shaders(m, hexUniforms)
 
 //Color
 debugObject.debthColor = '#186691'
 debugObject.surfaceColor = '#9bd8ff'
 
 
-let unifroms = {
-    idx: [],
-    colors: [],
-    pos: [],
-    delay: []
-}
-
-let sentence = "Aa Bb Cc"
+let sentence = "Privet Mam"
 
 let hexInstancesArray = []
-let fullWidth = constants.x * state.hexRadius * sentence.length
+let fullWidth = 0
+let _dx = [0]
 
+for (let j = 0; j < sentence.length; j++) {
+    let letter = sentence[j]
+    if(letter === ' ') {
+        letter = 'space'
+    }
+    fullWidth += letters[letter][0].length * (Math.sqrt(3) * state.hexRadius + 0.1)
+    _dx.push(fullWidth)
+}
 for (let i = 0; i < sentence.length; i++) {
     let letter = sentence[i]
-    let _im = createHexInstance(g, m);
-    _im.userData = {}
-    _im.userData.delay = []
-    
+    if(letter === ' ') {
+        letter = 'space'
+    }
+    let _im = createHexInstance();
+
     hexInstancesArray.push(_im)
     let dummy = new THREE.Object3D();
     scene.add(hexInstancesArray[i])
-    let _c = constants.y
-    if (['i', 'I', 'l'].includes(letter)) {
-        _c -= 4
-    } else if ([
-            "a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l",
-            "n", "o", "p", "q", "r", "s", "t", "u", "v",  "x", "y", "z"
-        ].includes(letter)) {
-        _c -= 2
-    } else if ([
-        " "
-    ].includes(letter)) {
-        _c = 2
-}
 
     let bounds = {
-        pYLen: _c,
+        offset: _dx[i],
         index: i,
         gap: state.gap,
         fw: fullWidth
     }
 
-    writeLine(_im, sentence[i], dummy, unifroms, counter, state, bounds)
+    writeLetter(_im, sentence[i], dummy, state, bounds)
 }
 
 
 
-g.setAttribute(
-    "aColor",
-    new THREE.InstancedBufferAttribute(new Float32Array(unifroms.colors), 3)
-);
 
-g.setAttribute(
-    "aIndex",
-    new THREE.InstancedBufferAttribute(new Float32Array(unifroms.idx), 1)
-);
-
-g.setAttribute(
-    "aDelay",
-    new THREE.InstancedBufferAttribute(new Float32Array(unifroms.delay), 1)
-);
-
-g.setAttribute(
-    "aPosXY",
-    new THREE.InstancedBufferAttribute(new Float32Array(unifroms.pos), 2)
-);
 
 
 /**
@@ -195,8 +156,8 @@ window.addEventListener('resize', () => {
  * Camera
  */
 // Base camera
-const camera = new THREE.PerspectiveCamera(75, sizes.width / sizes.height, 0.1, 100)
-camera.position.set(0, 0, 30)
+const camera = new THREE.PerspectiveCamera(75, sizes.width / sizes.height, 0.1, 1000)
+camera.position.set(0, -5, 70)
 scene.add(camera)
 
 // Controls
@@ -223,16 +184,23 @@ let mat4 = new THREE.Matrix4();
 
 const tick = () => {
     const t = clock.getElapsedTime()
-    hexUniforms.time.value = t;
+
+    STATE.letters.forEach((l, i) => {
+        l.material.hexUniforms.time.value = t;
+        l.material.hexUniforms.assTime.value += step;
+        if (l.material.hexUniforms.assTime.value > 1) {
+            l.material.hexUniforms.assTime.value = 1;
+        }
+    })
 
     // Update controls
     controls.update()
-    if (state.assemble) {
-        hexUniforms.assTime.value += 0.01
-        if(hexUniforms.assTime.value > 1){
-            hexUniforms.assTime.value = 1
-        }
-    }
+    // if (state.assemble) {
+    //     hexUniforms.assTime.value += 0.01
+    //     if (hexUniforms.assTime.value > 1) {
+    //         hexUniforms.assTime.value = 1
+    //     }
+    // }
 
     hexInstancesArray.forEach(i => {
         i.instanceMatrix.needsUpdate = true
@@ -249,14 +217,9 @@ tick()
 
 
 
-let font_canvas = document.querySelector('.font_canvas')
-let fcDims = {
-    w: 14,
-    h: 20,
-}
-font_canvas.width = fcDims.w
-font_canvas.height = fcDims.h
-var ctx = font_canvas.getContext("2d");
-var fsz = fcDims.w * 1.3
+
+
+
+
 
 

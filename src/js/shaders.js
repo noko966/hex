@@ -1,20 +1,5 @@
-export const shaders = (mat, hexUniforms) => {
-    mat.onBeforeCompile = (shader) => {
-        shader.uniforms.time = hexUniforms.time;
-        shader.uniforms.assTime = hexUniforms.assTime;
-        shader.vertexShader = `
-uniform float time;
-uniform float assTime;
-attribute vec3 aColor;
-attribute float aIndex;
-attribute vec2 aPosXY;
-attribute float aDelay;
 
-attribute vec2 colorPhase;
-varying vec3 vPos;
-varying vec3 vInstColor;
-varying float vInstIndex;
-varying vec2 vColorPhase;
+let chunkNoise = `
 vec4 permute(vec4 x){return mod(((x*34.0)+1.0)*x, 289.0);}
 vec4 taylorInvSqrt(vec4 r){return 1.79284291400159 - 0.85373472095314 * r;}
 vec3 fade(vec3 t) {return t*t*t*(t*(t*6.0-15.0)+10.0);}
@@ -78,26 +63,71 @@ vec4 n_z = mix(vec4(n000, n100, n010, n110), vec4(n001, n101, n011, n111), fade_
 vec2 n_yz = mix(n_z.xy, n_z.zw, fade_xyz.y);
 float n_xyz = mix(n_yz.x, n_yz.y, fade_xyz.x); 
 return 2.2 * n_xyz;
+}`
+
+export const shaders = (mat) => {
+    mat.onBeforeCompile = (shader) => {
+        shader.uniforms.time = mat.hexUniforms.time;
+        shader.uniforms.assTime = mat.hexUniforms.assTime;
+        shader.vertexShader = `
+uniform float time;
+uniform float assTime;
+attribute vec3 aColor;
+attribute float aIndex;
+attribute vec2 aPosXY;
+attribute float aDelay;
+
+attribute vec2 colorPhase;
+varying vec3 vPos;
+varying vec3 vInstColor;
+varying float vInstIndex;
+varying vec2 vColorPhase;
+float bounceOut(float t) {
+    const float a = 4.0 / 11.0;
+    const float b = 8.0 / 11.0;
+    const float c = 9.0 / 10.0;
+  
+    const float ca = 4356.0 / 361.0;
+    const float cb = 35442.0 / 1805.0;
+    const float cc = 16061.0 / 1805.0;
+  
+    float t2 = t * t;
+  
+    return t < a
+      ? 7.5625 * t2
+      : t < b
+        ? 9.075 * t2 - 9.9 * t + 3.4
+        : t < c
+          ? ca * t2 - cb * t + cc
+          : 10.8 * t * t - 20.52 * t + 10.72;
 }
+${chunkNoise}
 ${shader.vertexShader.replace(
 '#include <begin_vertex>',
 `#include <begin_vertex>
-// float noised = cnoise(vec3(transformed.x, transformed.y, time));
 vPos = vec3(transformed);
 vInstColor = vec3(aColor);
 vInstIndex = aIndex;
 float noise = cnoise(vec3(aPosXY.x, aPosXY.y, time * 0.5));
 
+float noiseStatic = cnoise(vec3(aPosXY.x, aPosXY.y, 0.0));
+
+
+
+
+vec3 source = vec3(transformed);
+source.y += abs(noiseStatic) * 1000.0;
+source.z += abs(noiseStatic) * 1000.0;
+
+// attribute float aDelay;
 
 vec3 target = transformed;
-transformed.z -= noise;
-vec3 source = vec3(transformed);
-source.y -= abs(noise * 10.0) * abs(noise) * 120.0;
-vec3 pp = source * (1.0 - assTime) - (1.0 - assTime) * target;
-transformed += pp;
 
-
-
+float tt =  bounceOut(assTime);
+// float tt = pow(assTime, 9.0);
+vec3 pp = source * (1.0 - tt) - target * (1.0 - tt);
+transformed.z -= noise * 2.0;
+transformed -= pp;
 `
 )}`
 
