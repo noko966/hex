@@ -90,7 +90,7 @@ debugObject.debthColor = '#186691'
 debugObject.surfaceColor = '#9bd8ff'
 
 
-let sentence = "Privet Mam"
+let sentence = "HI NICK"
 
 let hexInstancesArray = []
 let fullWidth = 0
@@ -178,20 +178,24 @@ renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 /**
  * Animate
  */
-const clock = new THREE.Clock()
+
 let mat4 = new THREE.Matrix4();
 
 
 const tick = () => {
-    const t = clock.getElapsedTime()
+    STATE.play()
+    let t = STATE.time
+    // STATE.letters.forEach((l) => {
+    //     l.material.hexUniforms.time.value = t;
+    //     l.material.hexUniforms.assTime.value += 0.01;
+    //     if (l.material.hexUniforms.assTime.value > 1) {
+    //         l.material.hexUniforms.assTime.value = 1;
+    //     }
+    // })
 
-    STATE.letters.forEach((l, i) => {
-        l.material.hexUniforms.time.value = t;
-        l.material.hexUniforms.assTime.value += step;
-        if (l.material.hexUniforms.assTime.value > 1) {
-            l.material.hexUniforms.assTime.value = 1;
-        }
-    })
+        
+        // STATE.animations[0]().then(STATE.animations[3])
+
 
     // Update controls
     controls.update()
@@ -214,6 +218,17 @@ const tick = () => {
 }
 
 tick()
+
+window.addEventListener('click', ()=> {
+    STATE.animations.reduce((prev, cur) => {
+        return prev.then(cur)
+    }, Promise.resolve(1))
+})
+
+
+
+
+
 
 
 

@@ -14,6 +14,7 @@ import tinycolor from 'tinycolor2'
 import {
     constants
 } from './constants'
+import STATE from './State';
 
 
 function setHexData(o, dummy, pos, idx) {
@@ -72,9 +73,10 @@ export const writeLetter = (o, singLett, dummy, state, bounds) => {
         w: forYMax * wx,
         h: _letterGrid.length * wy
     }
-    let index = MathUtils.randInt(0, colorsArray.length - 1)
     let aPosXY = []
+    let aColor = []
     for (let x = forX; x < _letterGrid.length; x++) {
+
         for (let y = forY; y < forYMax; y++) {
             let dy = wy * x
             let dx = wx * y
@@ -94,14 +96,15 @@ export const writeLetter = (o, singLett, dummy, state, bounds) => {
             if (_letterGrid[x][y]) {
                 setHexData(o, dummy, c, _counter);
                 aPosXY.push(c.x, c.y);
+                let index = MathUtils.randInt(0, colorsArray.length - 1)
 
                 let cc = tinycolor(colorsArray[index]).darken(x + Math.random() * 8).toHexString()
                 cc = new Color(cc)
-                // _uniforms.colors.push(cc.r, cc.b, cc.g);
+                aColor.push(cc.r, cc.b, cc.g);
                 // _uniforms.delay.push(x + y)
-                // o.setColorAt(_counter, cc)
+                o.setColorAt(_counter, cc)
 
-                // o.instanceColor.needsUpdate
+                o.instanceColor.needsUpdate
                 _counter++
             }
 
@@ -116,9 +119,28 @@ export const writeLetter = (o, singLett, dummy, state, bounds) => {
         new InstancedBufferAttribute(new Float32Array(aPosXY), 2)
     );
 
-    const animation = function(){
-        return
+    o.geometry.setAttribute(
+        "aColor",
+        new InstancedBufferAttribute(new Float32Array(aColor), 3)
+    );
+
+    var animation = function () {
+        return new Promise(function (resolve) {
+            var anim = function () {
+                o.material.hexUniforms.time.value = STATE.time;
+                o.material.hexUniforms.assTime.value += 0.1
+                window.requestAnimationFrame(anim)
+                if (o.material.hexUniforms.assTime.value >= 1) {
+                    o.material.hexUniforms.assTime.value = 1
+                    window.cancelAnimationFrame(anim)
+                    resolve()
+                }
+            }
+            anim()
+        })
     }
+
+    STATE.addAnimation(animation)
 
     return true
 

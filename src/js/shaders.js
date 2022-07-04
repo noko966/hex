@@ -75,6 +75,9 @@ uniform float assTime;
 attribute vec3 aColor;
 attribute float aIndex;
 attribute vec2 aPosXY;
+attribute vec3 aBarycentric;
+varying vec3 vBarycentric;
+
 attribute float aDelay;
 
 attribute vec2 colorPhase;
@@ -116,26 +119,63 @@ float noiseStatic = cnoise(vec3(aPosXY.x, aPosXY.y, 0.0));
 
 
 vec3 source = vec3(transformed);
-source.y += abs(noiseStatic) * 1000.0;
-source.z += abs(noiseStatic) * 1000.0;
+// source.y += abs(noiseStatic) * 10000.0;
+source.z += abs(noiseStatic) * 10000.0;
 
 // attribute float aDelay;
 
 vec3 target = transformed;
 
 float tt =  bounceOut(assTime);
+// float tt = assTime;
 // float tt = pow(assTime, 9.0);
 vec3 pp = source * (1.0 - tt) - target * (1.0 - tt);
 transformed.z -= noise * 2.0;
 transformed -= pp;
+
+vBarycentric = aBarycentric;
 `
 )}`
-
 
 shader.fragmentShader = `
 uniform float time;
 varying vec3 vPos;
 varying vec3 vInstColor;
+
+varying vec3 vBarycentric;
+
+float aastep (float threshold, float dist) {
+    float afwidth = fwidth(dist) * 0.5;
+    return smoothstep(threshold - afwidth, threshold + afwidth, dist);
+}
+
+vec4 getStyledWireframe (vec3 barycentric) {
+    // this will be our signed distance for the wireframe edge
+    float d = min(min(barycentric.x, barycentric.y), barycentric.z);
+  
+    // for dashed rendering, we can use this to get the 0 .. 1 value of the line length
+    float positionAlong = max(barycentric.x, barycentric.y);
+    if (barycentric.y < barycentric.x && barycentric.y < barycentric.z) {
+      positionAlong = 1.0 - positionAlong;
+    }
+  
+    // the thickness of the stroke
+    float computedThickness = 0.005;
+  
+    float edge = 1.0 - aastep(computedThickness, d);
+    // now compute the final color of the mesh
+    vec4 outColor = vec4(0.0);
+
+    vec3 fill = vec3(0.8);
+    vec3 stroke = vec3(0.1);
+
+    vec3 mainStroke = mix(fill, stroke, edge);
+    outColor.a = 1.0;
+    outColor.rgb = mainStroke;
+
+
+    return outColor;
+  }
 
 ${shader.fragmentShader.replace(
 '#include <dithering_fragment>',
@@ -147,8 +187,8 @@ ${shader.fragmentShader.replace(
     vec3 neon = vec3(0.0, 0.0, abs(sin(time)));
     neon =  mix(neon, gl_FragColor.rgb, 0.8 );
     // vec2 neon2 =  step(0.5, abs(vPos.xy));
-    // gl_FragColor.rgb = mix(neon, gl_FragColor.rgb, a );
-    // gl_FragColor.rgb += vec3(step(0.3, vPos.x));
+    gl_FragColor.rgb = mix(neon, gl_FragColor.rgb, a );
+    // gl_FragColor += getStyledWireframe(vBarycentric) * 0.1;
 `
 )}`
 

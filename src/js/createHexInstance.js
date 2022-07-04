@@ -34,14 +34,34 @@ export const createHexInstance = () => {
 
     let _materialComp = shaders(_material)
     let _geometry = new CylinderBufferGeometry(STATE.hexRadius, STATE.hexRadius, STATE.hexHeight, 6);
+
+    let count = _geometry.getAttribute('position').count
+    const barycentric = []
+    for (let i = 0; i < count; i++) {
+        const even = i % 2 === 0;
+        const Q = 0;
+        if (even) {
+            barycentric.push(
+                0, 0, 1,
+                0, 1, 0,
+                1, 0, Q
+            );
+        } else {
+            barycentric.push(
+                0, 1, 0,
+                0, 0, 1,
+                1, 0, Q
+            );
+        }
+    }
+
+
+    _geometry.setAttribute('aBarycentric',
+        new InstancedBufferAttribute(new Float32Array(barycentric), 3)
+    )
+
     _geometry.rotateX(Math.PI * 0.5);
 
-    
-
-    // g.setAttribute(
-    //     "aColor",
-    //     new InstancedBufferAttribute(new Float32Array(unifroms.colors), 6)
-    // );
 
     // g.setAttribute(
     //     "aIndex",
@@ -52,8 +72,6 @@ export const createHexInstance = () => {
     //     "aDelay",
     //     new InstancedBufferAttribute(new Float32Array(unifroms.delay), 1)
     // );
-
-    
 
     let instance = new InstancedMesh(_geometry, _materialComp, constants.txtGridSize);
     instance.castShadow = true;
