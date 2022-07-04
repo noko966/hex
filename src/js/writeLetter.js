@@ -27,11 +27,18 @@ function setHexData(o, dummy, pos, idx) {
 }
 
 const colorsArray = [
-    '#8A9A5B',
-    '#ffb700',
-    '#7393B3',
-    '#F88379'
+    '#222245',
+    '#222244',
+    '#222246'
 ]
+
+// const colorsArray = [
+//     '#999999',
+//     '#777777',
+//     '#555555',
+//     '#333333',
+//     '#111111',
+// ]
 
 // for (let i = 0; i < 5; i++) {
 //     let color = tinycolor('#186691').lighten(i * 2).toHexString()
@@ -75,6 +82,7 @@ export const writeLetter = (o, singLett, dummy, state, bounds) => {
     }
     let aPosXY = []
     let aColor = []
+    let aColorGlow = []
     for (let x = forX; x < _letterGrid.length; x++) {
 
         for (let y = forY; y < forYMax; y++) {
@@ -100,9 +108,13 @@ export const writeLetter = (o, singLett, dummy, state, bounds) => {
 
                 let cc = tinycolor(colorsArray[index]).darken(x + Math.random() * 8).toHexString()
                 cc = new Color(cc)
-                aColor.push(cc.r, cc.b, cc.g);
+                aColor.push(cc.r, cc.g, cc.b);
+                let cg = tinycolor(["#860029", "#f887ff", "#de004e"][MathUtils.randInt(0, 2)]).toHexString()
+                cg = new Color(cg)
+                aColorGlow.push(cg.r, cg.g, cg.b)
                 // _uniforms.delay.push(x + y)
                 o.setColorAt(_counter, cc)
+                // o.frustumCulled = false
 
                 o.instanceColor.needsUpdate
                 _counter++
@@ -124,11 +136,16 @@ export const writeLetter = (o, singLett, dummy, state, bounds) => {
         new InstancedBufferAttribute(new Float32Array(aColor), 3)
     );
 
+    o.geometry.setAttribute(
+        "aColorGlow",
+        new InstancedBufferAttribute(new Float32Array(aColorGlow), 3)
+    );
+
     var animation = function () {
         return new Promise(function (resolve) {
             var anim = function () {
                 o.material.hexUniforms.time.value = STATE.time;
-                o.material.hexUniforms.assTime.value += 0.1
+                o.material.hexUniforms.assTime.value += 0.05
                 window.requestAnimationFrame(anim)
                 if (o.material.hexUniforms.assTime.value >= 1) {
                     o.material.hexUniforms.assTime.value = 1

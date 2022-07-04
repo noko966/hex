@@ -73,10 +73,12 @@ export const shaders = (mat) => {
 uniform float time;
 uniform float assTime;
 attribute vec3 aColor;
+attribute vec3 aColorGlow;
 attribute float aIndex;
 attribute vec2 aPosXY;
 attribute vec3 aBarycentric;
 varying vec3 vBarycentric;
+varying vec3 vColorGlow;
 
 attribute float aDelay;
 
@@ -134,6 +136,8 @@ transformed.z -= noise * 2.0;
 transformed -= pp;
 
 vBarycentric = aBarycentric;
+
+vColorGlow = aColorGlow;
 `
 )}`
 
@@ -141,6 +145,7 @@ shader.fragmentShader = `
 uniform float time;
 varying vec3 vPos;
 varying vec3 vInstColor;
+varying vec3 vColorGlow;
 
 varying vec3 vBarycentric;
 
@@ -182,12 +187,27 @@ ${shader.fragmentShader.replace(
 `
     #include <dithering_fragment>
     vec3 color = gl_FragColor.rgb;
-    // float a = smoothstep(0.015, 0.02 + (1. - time) * 0.03, abs(vPos.z));
-    float a = step(1.2, abs(vPos.z));
-    vec3 neon = vec3(0.0, 0.0, abs(sin(time)));
-    neon =  mix(neon, gl_FragColor.rgb, 0.8 );
-    // vec2 neon2 =  step(0.5, abs(vPos.xy));
-    gl_FragColor.rgb = mix(neon, gl_FragColor.rgb, a );
+    
+    vec3 neonColor = vColorGlow;
+    
+    float Pi = 3.1415926538;
+    
+    float N = 6.0;
+    float angle = atan(vPos.x, vPos.y) + Pi / 2.0;
+    float radius = Pi * 2.0 / N;
+
+    float d = cos(floor(0.5 + angle / radius) * radius - angle) * length(vPos.xy);
+    d = 1.0-smoothstep(0.4,0.41,d);
+
+    float a = smoothstep(0.1, 0.11, abs(vPos.z));
+
+    float neonMask = 1.0 - a + d;
+    vec3 RGB = mix(gl_FragColor.rgb, neonColor, neonMask * 0.5);
+    gl_FragColor.rgb = RGB;
+    // gl_FragColor.rgb = vPos.z > 0.2 ? vec3(0.0, 0.0, 0.0) : RGB;
+
+
+
     // gl_FragColor += getStyledWireframe(vBarycentric) * 0.1;
 `
 )}`

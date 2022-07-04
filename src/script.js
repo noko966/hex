@@ -63,12 +63,13 @@ let ax = new THREE.AxesHelper(50)
 // scene.add(ax)
 
 let light = new THREE.DirectionalLight(0xffffff, 1.5);
-light.position.set(0, 50, 20);
+light.position.set(0, 1, 3);
 light.castShadow = true;
 light.shadow.mapSize.width = 1024;
 light.shadow.mapSize.height = 1024;
 light.shadow.camera.near = 0.5;
-light.shadow.camera.far = 250;
+light.shadow.camera.far = 500;
+// light.frustumCulled = false
 
 let camSize = 10;
 light.shadow.camera.left = -camSize;
@@ -90,7 +91,7 @@ debugObject.debthColor = '#186691'
 debugObject.surfaceColor = '#9bd8ff'
 
 
-let sentence = "HI NICK"
+let sentence = "ABC 123"
 
 let hexInstancesArray = []
 let fullWidth = 0
@@ -185,29 +186,14 @@ let mat4 = new THREE.Matrix4();
 const tick = () => {
     STATE.play()
     let t = STATE.time
-    // STATE.letters.forEach((l) => {
-    //     l.material.hexUniforms.time.value = t;
-    //     l.material.hexUniforms.assTime.value += 0.01;
-    //     if (l.material.hexUniforms.assTime.value > 1) {
-    //         l.material.hexUniforms.assTime.value = 1;
-    //     }
-    // })
-
-        
-        // STATE.animations[0]().then(STATE.animations[3])
-
 
     // Update controls
     controls.update()
-    // if (state.assemble) {
-    //     hexUniforms.assTime.value += 0.01
-    //     if (hexUniforms.assTime.value > 1) {
-    //         hexUniforms.assTime.value = 1
-    //     }
-    // }
 
     hexInstancesArray.forEach(i => {
+        // i.rotation.y = Math.sin(t)
         i.instanceMatrix.needsUpdate = true
+        
     })
 
 
@@ -224,6 +210,7 @@ window.addEventListener('click', ()=> {
         return prev.then(cur)
     }, Promise.resolve(1))
 })
+
 
 
 

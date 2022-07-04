@@ -77,6 +77,8 @@ export const createHexInstance = () => {
     instance.castShadow = true;
     instance.receiveShadow = true;
 
+    instance.rotation.set(0, Math.random() * 10, 0)
+
     STATE.addLetter(instance)
 
     return instance
