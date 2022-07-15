@@ -13,6 +13,8 @@ import perlinNoise3d from 'perlin-noise-3d'
 
 import STATE from './js/State'
 
+import {Background} from './js/background'
+
 
 import {
     writeLetter
@@ -79,10 +81,6 @@ light.shadow.camera.top = camSize;
 
 scene.add(light)
 scene.add(new THREE.AmbientLight(0xffffff, 0.5))
-
-// Geometry
-
-
 
 
 
@@ -175,6 +173,11 @@ renderer.setSize(sizes.width, sizes.height)
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+
+
+let cameraDistance = camera.position.z;
+
+const BG = new Background(scene, cameraDistance)
 
 /**
  * Animate
